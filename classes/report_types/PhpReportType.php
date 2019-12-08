@@ -84,4 +84,53 @@ class PhpReportType extends ReportTypeBase {
 		
 		return $json;
 	}
+	
+	public static function getVariableOptions($params, &$report) {
+		$environments = PhpReports::$config['environments'];
+		if(!isset($environments[$report->options['Environment']][$report->options['Database']])) {
+			throw new Exception("No ".$report->options['Database']." info defined for environment '".$report->options['Environment']."'");
+		}
+		$config = $environments[$report->options['Environment']][$report->options['Database']];
+		
+		$displayColumn = $params['column'];
+		if(isset($params['display'])) $displayColumn = $params['display'];
+
+		$query = 'SELECT DISTINCT `'.$params['column'].'` as val, `'.$displayColumn.'` as disp FROM '.$params['table'];
+
+		if(isset($params['where'])) {
+			$query .= ' WHERE '.$params['where'];
+		}
+
+		if(isset($params['order']) && in_array($params['order'], array('ASC', 'DESC')) ) {
+			$query .= ' ORDER BY '.$params['column'].' '.$params['order'];
+		}
+
+		
+		$dsn = $config['dsn'];
+		$username = $config['user'];
+		$password = $config['pass'];
+		$report->conn = new PDO($dsn,$username,$password);
+		$report->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		
+		
+		$result = $report->conn->query($query);
+
+		$options = array();
+
+		if(isset($params['all'])) $options[] = 'ALL';
+
+		while($row = $result->fetch(PDO::FETCH_ASSOC)) {
+			$options[] = array(
+				'value'=>$row['val'],
+				'display'=>$row['disp']
+			);
+		}
+
+		return $options;
+	}
+	
+	
+	
+	
+	
 }
